@@ -1,0 +1,158 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5dec2b96-f5f2-408e-86f8-d6f3dadfd4d0",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Loop over input items and add a new field called 'my_new_field' to the JSON of each one\nreturn [\n    {\"city\": \"Tehran\"},\n    {\"city\": \"Mashhad\"},\n    {\"city\": \"Isfahan\"}\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0bffa11e-80f1-4d85-8157-8c5fa731c846",
+      "name": "Code in Python"
+    },
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.city }}"
+            },
+            {
+              "name": "appid",
+              "value": "7777435a50587519ac924814755ab145"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "lang",
+              "value": "fa"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "089e5038-eed0-489b-a0df-aa8be54b5cd2",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Loop over input items and add a new field called 'my_new_field' to the JSON of each one\nimport datetime\n\n# دریافت داده‌ها از نود قبلی\nitems = _input.all()\noutput = []\n\nfor item in items:\n    data = item.json\n    city = data.get('name')\n    temp = data['main']['temp']\n    desc = data['weather'][0]['description']\n    main_weather = data['weather'][0]['main'] # وضعیت اصلی (Rain, Clouds, etc.)\n    \n    # منطق Alert برای بارندگی\n    alert_emoji = \"☀️\"\n    if main_weather in [\"Rain\", \"Drizzle\", \"Thunderstorm\"]:\n        alert_emoji = \"⚠️ ☔ (هشدار بارندگی! چتر بردارید)\"\n    elif temp < 5:\n        alert_emoji = \"❄️ (هوا خیلی سرده، لباس گرم بپوش!)\"\n\n    # ساخت پیام نهایی\n    message = f\"\"\"\n📅 گزارش هواشناسی مورخ: {datetime.date.today()}\n📍 شهر: {city}\n🌡 دما: {temp}°C\n☁️ وضعیت: {desc}\n📢 پیام: {alert_emoji}\n---------------------------\n    \"\"\"\n    \n    output.append({\"formatted_message\": message})\n\nreturn output"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "973c314c-76b4-4d53-8ee3-d32ade36b5e2",
+      "name": "Code in Python1"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "text": "={{ $json.formatted_message }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        832,
+        0
+      ],
+      "id": "dabf34e7-ee1e-412d-aabc-73b95101cedf",
+      "name": "Send a message",
+      "webhookId": "6ab5d967-6a9a-4002-9fa0-00df3a294433"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in Python1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f05f8eabcba2be2a882b43e822a7be79ea68df3dd036dabe4676ef64935bacf"
+  }
+}
